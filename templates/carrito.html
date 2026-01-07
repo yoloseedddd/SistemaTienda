@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tu Carrito - Pago Seguro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .credit-card-form { background: #f8f9fa; border-radius: 10px; padding: 20px; }
+        .secure-icon { color: #28a745; font-size: 1.2rem; }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <h2 class="mb-4">🛒 Finalizar Compra</h2>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-danger text-center" role="alert">
+                🛑 <strong>¡Atención!</strong> {{ messages[0] }}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cant.</th>
+                                <th>Precio Unit.</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in carrito %}
+                            <tr>
+                                <td>
+                                    <img src="{{ item.imagen }}" width="50" class="me-2 rounded">
+                                    {{ item.nombre }}
+                                </td>
+                                <td>{{ item.cantidad }}</td>
+                                <td>S/ {{ "{:,.2f}".format(item.precio) }}</td>
+                                <td class="fw-bold">S/ {{ "{:,.2f}".format(item.subtotal) }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% if not carrito %}
+                            <tr><td colspan="4" class="text-center text-muted">Tu carrito está vacío 😢</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                    <a href="/limpiar_carrito" class="btn btn-outline-danger btn-sm">🗑️ Vaciar Carrito</a>
+                    <a href="/catalogo" class="btn btn-outline-primary btn-sm">← Seguir Comprando</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <label class="form-label fw-bold">🎟️ ¿Tienes un cupón?</label>
+                    <form action="/aplicar_cupon" method="POST" class="input-group">
+                        <input type="text" name="codigo" class="form-control" placeholder="Ej: PROMO2026" value="{{ nombre_cupon }}">
+                        <button class="btn btn-outline-secondary" type="submit">Aplicar</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">✈️ Resumen de Cuenta</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formCompraReal" action="/confirmar_compra" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Destino de Envío:</label>
+                            <select id="pais" class="form-select" onchange="calcularTotal()" required>
+                                <option value="0">Recojo en Tienda (Gratis)</option>
+                                <option value="20">Lima Metropolitana (S/ 20)</option>
+                                <option value="40">Provincias - Perú (S/ 40)</option>
+                            </select>
+                        </div>
+
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between text-muted">
+                            <span>Subtotal:</span>
+                            <span>S/ {{ "{:,.2f}".format(subtotal_real) }}</span>
+                        </div>
+
+                        {% if monto_descuento > 0 %}
+                        <div class="d-flex justify-content-between text-success fw-bold">
+                            <span>Descuento ({{ nombre_cupon }}):</span>
+                            <span>- S/ {{ "{:,.2f}".format(monto_descuento) }}</span>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between text-primary">
+                            <span>Envío:</span>
+                            <span id="txtEnvio">S/ 0.00</span>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-3 pt-3 border-top">
+                            <h4 class="fw-bold">Total a Pagar:</h4>
+                            <h4 class="fw-bold text-dark" id="txtTotal">S/ {{ "{:,.2f}".format(total_productos) }}</h4>
+                        </div>
+
+                        <input type="hidden" id="inputEnvio" name="costo_envio_input" value="0">
+                        <input type="hidden" id="inputTotal" name="total_final_input" value="{{ total_productos }}">
+
+                        <button type="button" class="btn btn-success w-100 btn-lg mt-3" onclick="abrirPasarela()" {% if not carrito %}disabled{% endif %}>
+                            💳 Pagar Ahora
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPago" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">🔒 Pasarela de Pago Segura</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fab fa-cc-visa fa-2x text-primary mx-1"></i>
+                    <i class="fab fa-cc-mastercard fa-2x text-warning mx-1"></i>
+                    <i class="fab fa-cc-amex fa-2x text-info mx-1"></i>
+                </div>
+                
+                <form id="formTarjeta">
+                    <div class="mb-3">
+                        <label>Titular de la Tarjeta</label>
+                        <input type="text" class="form-control" placeholder="Como aparece en la tarjeta" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label>Número de Tarjeta</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa fa-credit-card"></i></span>
+                            <input type="text" id="cardNumber" class="form-control" placeholder="0000 0000 0000 0000" maxlength="19" onkeyup="detectarTarjeta()" required>
+                        </div>
+                        <small id="tipoTarjeta" class="text-primary fw-bold"></small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6">
+                            <label>Vencimiento</label>
+                            <input type="text" class="form-control" placeholder="MM/YY" maxlength="5" required>
+                        </div>
+                        <div class="col-6">
+                            <label>CVV <i class="fa fa-question-circle text-muted"></i></label>
+                            <input type="password" class="form-control" placeholder="123" maxlength="3" required>
+                        </div>
+                    </div>
+                </form>
+
+                <div id="loading" class="text-center mt-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Contactando con el banco...</p>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success fw-bold" onclick="procesarPago()">Confirmar Pago S/ <span id="montoModal">0.00</span></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Variable que viene de Python (El subtotal de los productos)
+    const subtotalBase = {{ total_productos }};
+    
+    // 1. CÁLCULO DE ENVÍO
+    function calcularTotal() {
+        let envio = parseFloat(document.getElementById('pais').value);
+        let total = subtotalBase + envio;
+        
+        document.getElementById('txtEnvio').innerText = "S/ " + envio.toFixed(2);
+        document.getElementById('txtTotal').innerText = "S/ " + total.toLocaleString('en-US', {minimumFractionDigits: 2});
+        
+        // Actualizamos los inputs ocultos
+        document.getElementById('inputEnvio').value = envio;
+        document.getElementById('inputTotal').value = total;
+        
+        // Actualizamos el monto en el botón del modal
+        document.getElementById('montoModal').innerText = total.toLocaleString('en-US', {minimumFractionDigits: 2});
+    }
+
+    // 2. ABRIR EL MODAL
+    function abrirPasarela() {
+        var myModal = new bootstrap.Modal(document.getElementById('modalPago'));
+        myModal.show();
+    }
+
+    // 3. DETECTAR TARJETA (VISA / MASTERCARD)
+    function detectarTarjeta() {
+        let numero = document.getElementById('cardNumber').value;
+        let etiqueta = document.getElementById('tipoTarjeta');
+        
+        if (numero.startsWith('4')) { etiqueta.innerText = "Tarjeta VISA detectada"; etiqueta.className = "text-primary fw-bold"; }
+        else if (numero.startsWith('5')) { etiqueta.innerText = "Tarjeta MasterCard detectada"; etiqueta.className = "text-warning fw-bold"; }
+        else { etiqueta.innerText = ""; }
+    }
+
+    // 4. SIMULACIÓN DE PAGO (LO MÁS DIVERTIDO)
+    function procesarPago() {
+        let cardInput = document.getElementById('cardNumber').value;
+        
+        // Validación simple
+        if (cardInput.length < 16) {
+            alert("⚠️ Error: El número de tarjeta es inválido.");
+            return;
+        }
+
+        // Ocultar botones y mostrar spinner
+        document.querySelector('.modal-footer').style.display = 'none';
+        document.getElementById('loading').style.display = 'block';
+
+        // Simular espera de 3 segundos
+        setTimeout(function() {
+            // ¡ÉXITO! Enviamos el formulario real al servidor
+            document.getElementById('formCompraReal').submit();
+        }, 3000); 
+    }
+</script>
+
+</body>
+</html>

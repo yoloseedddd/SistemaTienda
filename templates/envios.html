@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Envíos Internacionales</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <h2 class="mb-4 text-primary">✈️ Cotizador de Envíos Internacionales</h2>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form id="formEnvios">
+                        <div class="mb-3">
+                            <label class="form-label">País de Destino</label>
+                            <select id="pais" class="form-select" required>
+                                <option value="" selected disabled>Seleccionar país...</option>
+                                <option value="usa">🇺🇸 Estados Unidos (USA)</option>
+                                <option value="es">🇪🇸 España (Europa)</option>
+                                <option value="mx">🇲🇽 México</option>
+                                <option value="cl">🇨🇱 Chile</option>
+                                <option value="jp">🇯🇵 Japón (Asia)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Dirección Exacta</label>
+                            <input type="text" class="form-control" placeholder="Calle, Ciudad, Código Postal">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Peso del Paquete (kg)</label>
+                            <input id="peso" type="number" class="form-control" placeholder="Ej: 2.5" step="0.1" required>
+                        </div>
+                        <button type="button" onclick="calcularPrecio()" class="btn btn-success w-100">💰 Calcular Costo</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            
+            <div id="tarjetaResultado" class="card bg-white border-success mb-3" style="display: none;">
+                <div class="card-header bg-success text-white">Resultado de Cotización</div>
+                <div class="card-body text-center">
+                    <h5 class="card-title">Costo Estimado de Envío</h5>
+                    <h1 class="display-4 text-success fw-bold" id="precioFinal">S/ 0.00</h1>
+                    <p class="card-text text-muted" id="detallesEnvio">...</p>
+                    <button class="btn btn-outline-dark btn-sm">Imprimir Etiqueta</button>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <h5>ℹ️ Tarifas Vigentes (DHL/FedEx)</h5>
+                <ul>
+                    <li><strong>USA/México:</strong> Base S/ 50 + S/ 20 por Kg.</li>
+                    <li><strong>Sudamérica:</strong> Base S/ 40 + S/ 15 por Kg.</li>
+                    <li><strong>Europa:</strong> Base S/ 80 + S/ 30 por Kg.</li>
+                    <li><strong>Asia:</strong> Base S/ 100 + S/ 45 por Kg.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="/" class="btn btn-secondary">← Volver al Panel Principal</a>
+    </div>
+</div>
+
+<script>
+    function calcularPrecio() {
+        // 1. Obtener los datos que escribió el usuario
+        let pais = document.getElementById('pais').value;
+        let peso = parseFloat(document.getElementById('peso').value);
+        let tarjeta = document.getElementById('tarjetaResultado');
+        let textoPrecio = document.getElementById('precioFinal');
+        let textoDetalle = document.getElementById('detallesEnvio');
+
+        // Validación simple
+        if (pais === "" || isNaN(peso)) {
+            alert("⚠️ Por favor selecciona un país y escribe un peso válido.");
+            return;
+        }
+
+        // 2. Lógica de Precios (Tarifas)
+        let costoBase = 0;
+        let costoPorKg = 0;
+        let nombrePais = "";
+
+        if (pais === 'usa') { costoBase = 50; costoPorKg = 20; nombrePais = "Estados Unidos"; }
+        else if (pais === 'mx') { costoBase = 50; costoPorKg = 20; nombrePais = "México"; }
+        else if (pais === 'es') { costoBase = 80; costoPorKg = 30; nombrePais = "España"; }
+        else if (pais === 'cl') { costoBase = 40; costoPorKg = 15; nombrePais = "Chile"; }
+        else if (pais === 'jp') { costoBase = 100; costoPorKg = 45; nombrePais = "Japón"; }
+
+        // 3. La Matemática
+        let total = costoBase + (costoPorKg * peso);
+
+        // 4. Mostrar el resultado en pantalla
+        textoPrecio.innerText = "S/ " + total.toFixed(2);
+        textoDetalle.innerText = `Envío a ${nombrePais} (${peso} kg) - Llega en 3-5 días hábiles.`;
+        
+        // Hacemos visible la tarjeta
+        tarjeta.style.display = "block";
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,19 @@
+/* Estilos mínimos para mejorar UX */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Spinner en botón */
+.btn .spinner-border{
+  width: 1rem;
+  height: 1rem;
+  vertical-align: text-bottom;
+  margin-left: .5rem;
+}
+
+/* Mejor contraste para tarjetas oscuras si es necesario */
+.bg-primary.text-white, .bg-success.text-white {
+  color: #fff;
+}
